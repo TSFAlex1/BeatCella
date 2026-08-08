@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeatCella | Beat Saber Asset Vault</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#ef4444',
+                            cyan: '#06b6d4',
+                            dark: '#080c14',
+                            card: '#0f172a',
+                            border: '#1e293b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip for Format & Map Package Inspection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        /* Graphics Modes */
+        body.quality-mode {
+            background-color: #060911;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(239, 68, 68, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+        body.quality-mode .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        body.performance-mode {
+            background-color: #080c14;
+        }
+        body.performance-mode .glass-panel {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080c14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* Custom Dropdowns */
+        .custom-dropdown-menu {
+            transform-origin: top right;
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .custom-dropdown-menu.hidden-dropdown {
+            opacity: 0;
+            transform: scale(0.95) translateY(-6px);
+            pointer-events: none;
+        }
+        .custom-dropdown-menu.visible-dropdown {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            pointer-events: auto;
+        }
+
+        /* In-App Toast Animations */
+        @keyframes toastIn {
+            from { transform: translateY(100%) scale(0.9); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes toastOut {
+            from { transform: translateY(0) scale(1); opacity: 1; }
+            to { transform: translateY(100%) scale(0.9); opacity: 0; }
+        }
+        .toast-enter { animation: toastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .toast-exit { animation: toastOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="performance-mode text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
+
+    <!-- In-App Integrated Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 border-b border-slate-800/80 glass-panel">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 h-16 sm:h-20 flex items-center justify-between gap-4">
+            
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3 cursor-pointer" onclick="navigateTo('home')">
+                <div class="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-900 border border-slate-700 rounded-xl overflow-hidden group shadow-md shrink-0">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-red-600 via-slate-700 to-cyan-500 opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                    <i data-lucide="archive" class="relative z-10 w-4 h-4 sm:w-5 sm:h-5 text-white"></i>
+                </div>
+                <div>
+                    <span class="font-black text-xl sm:text-2xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-slate-100 to-cyan-400">BEATCELLA</span>
+                    <span class="hidden md:inline-block text-[10px] uppercase font-mono px-2 py-0.5 ml-2 bg-slate-800/90 text-slate-400 rounded-md border border-slate-700">Public Beta v0.2.0</span>
+                </div>
+            </div>
+
+            <!-- Global Search (Desktop) -->
+            <div class="flex-1 max-w-md lg:max-w-lg relative hidden md:block">
+                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search maps, sabers, color schemes, mods..." 
+                    class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-all placeholder:text-slate-500">
+            </div>
+
+            <!-- Navigation Links & Actions -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="navigateTo('about')" class="px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white rounded-xl hover:bg-slate-800/60 transition-colors">
+                    About
+                </button>
+
+                <!-- Settings Button -->
+                <button onclick="openSettingsModal()" title="Site Settings" class="p-2 sm:p-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Deposit Vault Asset Button -->
+                <button onclick="openUploadModal()" class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-red-600 via-slate-700 to-cyan-600 hover:opacity-90 text-white font-bold text-xs rounded-xl transition-all shadow-md">
+                    <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                    <span class="hidden xs:inline">Deposit Asset</span>
+                    <span class="xs:hidden">Deposit</span>
+                </button>
+
+                <!-- Auth / User Container -->
+                <div id="authContainer">
+                    <button onclick="openAuthModal()" class="px-3 sm:px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors">
+                        Log In
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Search Input Container -->
+        <div class="px-4 pb-3 md:hidden">
+            <div class="relative w-full">
+                <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                <input type="text" id="mobileSearchInput" oninput="handleSearch(true)" placeholder="Search maps, sabers, configs..." 
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-cyan-500">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <main class="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8">
+        
+        <!-- Category & Custom Dropdown Bar (Hidden when on About or Asset Detail pages) -->
+        <div id="categoryFilterBar" class="flex flex-col gap-4 border-b border-slate-800/80 pb-4 sm:pb-6 mb-6 sm:mb-8">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none">
+                    <button onclick="filterCategory('All')" class="cat-btn active px-3.5 py-2 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 transition-all whitespace-nowrap">
+                        All Items
+                    </button>
+                    <button onclick="filterCategory('Map')" class="cat-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200 transition-all whitespace-nowrap">
+                        🗺️ Maps
+                    </button>
+                    <button onclick="filterCategory('Playlist')" class="cat-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200 transition-all whitespace-nowrap">
+                        🎼 Playlists
+                    </button>
+                    <button onclick="filterCategory('Model')" class="cat-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200 transition-all whitespace-nowrap">
+                        🗡️ Models
+                    </button>
+                    <button onclick="filterCategory('Configuration')" class="cat-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200 transition-all whitespace-nowrap">
+                        🎨 Color Schemes & HSV
+                    </button>
+                    <button onclick="filterCategory('Mod')" class="cat-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200 transition-all whitespace-nowrap">
+                        ⚙️ Mods
+                    </button>
+                </div>
+
+                <!-- Custom Dropdown for Sorting -->
+                <div class="relative inline-block text-left shrink-0 self-end sm:self-auto w-full sm:w-auto min-w-[170px]">
+                    <button type="button" id="sortDropdownTrigger" onclick="toggleCustomDropdown('sortDropdownMenu')" class="w-full flex items-center justify-between gap-3 px-4 py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition-all">
+                        <span id="selectedSortLabel" class="flex items-center gap-1.5"><i data-lucide="flame" class="w-3.5 h-3.5 text-orange-400"></i> Trending</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                    </button>
+
+                    <div id="sortDropdownMenu" class="custom-dropdown-menu hidden-dropdown absolute right-0 mt-2 w-full sm:w-52 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1.5 z-50">
+                        <button onclick="selectCustomSort('trending', 'Trending', 'flame')" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg transition-colors text-left">
+                            <i data-lucide="flame" class="w-4 h-4 text-orange-400"></i> Trending
+                        </button>
+                        <button onclick="selectCustomSort('newest', 'Newest Uploads', 'clock')" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg transition-colors text-left">
+                            <i data-lucide="clock" class="w-4 h-4 text-cyan-400"></i> Newest Uploads
+                        </button>
+                        <button onclick="selectCustomSort('downloads', 'Most Downloaded', 'download')" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg transition-colors text-left">
+                            <i data-lucide="download" class="w-4 h-4 text-cyan-400"></i> Most Downloaded
+                        </button>
+                        <button onclick="selectCustomSort('rating', 'Highest Rated', 'star')" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg transition-colors text-left">
+                            <i data-lucide="star" class="w-4 h-4 text-yellow-400"></i> Highest Rated
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mod Version & Game Version Filtering Bar (Visible when filtering Mods or All) -->
+            <div id="modFiltersContainer" class="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-800/60 text-xs">
+                <span class="text-slate-400 font-semibold flex items-center gap-1.5">
+                    <i data-lucide="filter" class="w-3.5 h-3.5 text-cyan-400"></i> Version Filters:
+                </span>
+                
+                <!-- Game Version Selector -->
+                <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+                    <span class="text-slate-500 text-[11px]">Game Ver:</span>
+                    <select id="gameVersionFilter" onchange="renderAssetGrid()" class="bg-transparent text-slate-200 font-mono text-xs focus:outline-none cursor-pointer">
+                        <option value="All" class="bg-slate-900 text-slate-200">All Versions</option>
+                        <option value="1.37.1" class="bg-slate-900 text-slate-200">v1.37.1</option>
+                        <option value="1.37.0" class="bg-slate-900 text-slate-200">v1.37.0</option>
+                        <option value="1.34.2" class="bg-slate-900 text-slate-200">v1.34.2</option>
+                        <option value="1.29.1" class="bg-slate-900 text-slate-200">v1.29.1</option>
+                        <option value="1.28.0" class="bg-slate-900 text-slate-200">v1.28.0</option>
+                        <option value="1.20.0" class="bg-slate-900 text-slate-200">v1.20.0</option>
+                    </select>
+                </div>
+
+                <!-- Mod Platform / Extension Selector -->
+                <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+                    <span class="text-slate-500 text-[11px]">Mod Platform:</span>
+                    <select id="modPlatformFilter" onchange="renderAssetGrid()" class="bg-transparent text-slate-200 font-mono text-xs focus:outline-none cursor-pointer">
+                        <option value="All" class="bg-slate-900 text-slate-200">All Platforms</option>
+                        <option value="Quest" class="bg-slate-900 text-slate-200">Quest Native (.qmod)</option>
+                        <option value="PC" class="bg-slate-900 text-slate-200">PC VR (.dll)</option>
+                    </select>
+                </div>
+
+                <!-- Quick Reset Filters -->
+                <button onclick="resetModFilters()" class="text-slate-400 hover:text-cyan-400 text-[11px] font-semibold underline underline-offset-2 ml-auto">
+                    Reset Filters
+                </button>
+            </div>
+        </div>
+
+        <!-- Dynamic Views Router -->
+        <div id="viewContainer">
+            
+            <!-- HOME VIEW -->
+            <div id="homeView">
+                <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl glass-panel p-6 sm:p-10 mb-8 border border-slate-800/80 shadow-2xl">
+                    <div class="relative z-10 max-w-3xl space-y-3 sm:space-y-4">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                            Community Beat Saber Archive & Ecosystem
+                        </div>
+                        <h1 class="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+                            The Sanctuary for Custom Beat Saber Assets.
+                        </h1>
+                        <p class="text-slate-400 text-xs sm:text-base leading-relaxed">
+                            Discover custom maps, color schemes, sabers, mods, and playlists shared directly by creators or fetched live from BeatSaver and Quest Mods.
+                        </p>
+                    </div>
+                </div>
+
+                <div id="loadingState" class="text-center py-20">
+                    <div class="w-9 h-9 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                    <p class="text-xs text-slate-400 font-medium">Loading vault catalog & integrations...</p>
+                </div>
+
+                <div id="assetGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 hidden">
+                    <!-- Cards injected here -->
+                </div>
+
+                <div id="emptyState" class="hidden text-center py-16 border border-dashed border-slate-800 rounded-2xl bg-slate-900/40 p-6">
+                    <i data-lucide="folder-open" class="w-10 h-10 text-slate-600 mx-auto mb-3"></i>
+                    <h3 class="text-base font-bold text-slate-300">No Assets Found</h3>
+                    <p class="text-slate-500 text-xs mt-1 max-w-md mx-auto">No assets matched your current search filters or version criteria. Try adjusting your version selections or deposit an item!</p>
+                </div>
+            </div>
+
+            <!-- ABOUT PAGE VIEW -->
+            <div id="aboutView" class="hidden space-y-8 max-w-4xl mx-auto">
+                <div class="border-b border-slate-800 pb-6">
+                    <h1 class="text-3xl font-black text-white flex items-center gap-3">
+                        <i data-lucide="info" class="w-7 h-7 text-cyan-400"></i>
+                        About BeatCella
+                    </h1>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-2 leading-relaxed">
+                        BeatCella is an independent community hub built for Beat Saber enthusiasts to store, inspect, and share custom game modifications, color configurations, maps, and avatar models with live integrations for BeatSaver and BSQuest.
+                    </p>
+                </div>
+
+                <div class="space-y-6">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-red-400"></i>
+                        Project Team & Staff
+                    </h2>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <!-- Founder & Owner Profile -->
+                        <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex items-center gap-4 hover:border-cyan-500/40 transition-all">
+                            <a href="https://github.com/TSFAlex1" target="_blank" rel="noopener noreferrer" class="relative shrink-0">
+                                <img src="https://github.com/TSFAlex1.png" alt="TSFAlex" class="w-16 h-16 rounded-xl border border-cyan-500/50 object-cover bg-slate-950" onerror="this.src='https://github.com/github.png'">
+                                <span class="absolute -bottom-1 -right-1 bg-cyan-500 text-slate-950 font-black text-[9px] px-1.5 py-0.5 rounded">OWNER</span>
+                            </a>
+                            <div class="space-y-1">
+                                <h3 class="text-base font-extrabold text-white flex items-center gap-1.5">
+                                    TSFAlex
+                                </h3>
+                                <p class="text-xs text-cyan-400 font-medium">Project Owner & Lead Developer</p>
+                                <a href="https://github.com/TSFAlex1" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-white pt-1">
+                                    <i data-lucide="github" class="w-3.5 h-3.5"></i> github.com/TSFAlex1
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Public Beta Status</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        BeatCella is currently running version <span class="text-cyan-400 font-mono font-semibold">Public Beta v0.2.0</span>. Features include live map audio previews extracted directly from Beat Saber song files, BSManager one-click installs, and Quest Mod repositories.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ASSET DETAIL VIEW WITH INTEGRATED HSV PREVIEW SECTION -->
+            <div id="assetDetailView" class="hidden space-y-6">
+                <button onclick="navigateTo('home')" class="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Catalog
+                </button>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-8">
+                        <!-- Detail Header Banner -->
+                        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 relative overflow-hidden shadow-2xl">
+                            <div class="flex flex-col sm:flex-row gap-6">
+                                <div id="detailCoverWrapper" class="relative group w-32 h-32 sm:w-40 sm:h-40 rounded-2xl overflow-hidden border border-slate-700 bg-slate-900 shadow-xl shrink-0">
+                                    <img id="detailCover" src="" alt="Cover" class="w-full h-full object-cover">
+                                    <!-- Play/Pause Overlay for Map audio preview -->
+                                    <div id="detailPlayOverlay" class="hidden absolute inset-0 bg-slate-950/60 flex items-center justify-center cursor-pointer opacity-90 hover:opacity-100 transition-opacity" onclick="toggleDetailAudioPlayback()">
+                                        <div class="w-12 h-12 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-lg">
+                                            <i id="detailPlayIcon" data-lucide="play" class="w-6 h-6 fill-slate-950 ml-0.5"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex-1 space-y-3">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span id="detailCategoryBadge" class="px-3 py-1 rounded-full text-[11px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                            Map
+                                        </span>
+                                        <span id="detailSubcategory" class="px-3 py-1 rounded-full text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                                            Standard Format
+                                        </span>
+                                        <span id="detailSourceBadge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-mono bg-slate-900 text-cyan-400 border border-slate-800">
+                                            BeatSaver
+                                        </span>
+                                    </div>
+                                    <h1 id="detailTitle" class="text-2xl sm:text-3xl font-extrabold text-white">Asset Title</h1>
+                                    <p id="detailAuthor" class="text-xs text-slate-400">By <span class="text-cyan-400 font-semibold">AuthorName</span></p>
+                                    
+                                    <div class="flex flex-wrap items-center gap-5 text-xs text-slate-300 pt-2 border-t border-slate-800/80">
+                                        <div class="flex items-center gap-1.5">
+                                            <i data-lucide="download" class="w-4 h-4 text-cyan-400"></i>
+                                            <span id="detailDownloads">0</span> Downloads
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                                            <span id="detailRating">5.0</span> Rating
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <i data-lucide="eye" class="w-4 h-4 text-slate-400"></i>
+                                            <span id="detailViews">0</span> Views
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Integrated In-Game HSV Previewer Section (Displayed for HSV/Configuration Assets) -->
+                        <div id="integratedHsvSection" class="hidden glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                                <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+                                    <i data-lucide="sliders" class="w-5 h-5 text-cyan-400"></i>
+                                    In-Game Color Preview
+                                </h3>
+                                <span class="text-[11px] font-mono text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">Visualizer Test</span>
+                            </div>
+
+                            <div class="flex flex-col items-center justify-center p-4 bg-slate-950 rounded-2xl border border-slate-800/80">
+                                <canvas id="hsvCanvas" width="500" height="220" class="w-full max-w-lg h-auto rounded-xl bg-slate-950"></canvas>
+                            </div>
+
+                            <!-- Integrated Tweaker Controls -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+                                <div class="space-y-2.5 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="font-bold text-red-400">Left Note / Saber</span>
+                                        <span id="valLeftHex" class="font-mono text-[11px] text-slate-400">HSL(0, 90%, 55%)</span>
+                                    </div>
+                                    <label class="block text-[10px] text-slate-400 uppercase">Hue Offset</label>
+                                    <input type="range" id="sliderLeftHue" min="0" max="360" value="0" oninput="updateHSVStudio()" class="w-full accent-red-500 cursor-pointer">
+                                </div>
+
+                                <div class="space-y-2.5 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="font-bold text-cyan-400">Right Note / Saber</span>
+                                        <span id="valRightHex" class="font-mono text-[11px] text-slate-400">HSL(180, 90%, 55%)</span>
+                                    </div>
+                                    <label class="block text-[10px] text-slate-400 uppercase">Hue Offset</label>
+                                    <input type="range" id="sliderRightHue" min="0" max="360" value="180" oninput="updateHSVStudio()" class="w-full accent-cyan-400 cursor-pointer">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Description & Tech Specs -->
+                        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
+                            <h3 class="text-base font-extrabold text-white border-b border-slate-800 pb-3">Asset Details</h3>
+                            <p id="detailDescription" class="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line"></p>
+                            
+                            <div id="detailMetadataContainer" class="pt-4 border-t border-slate-800">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">File Specs & Metadata</h4>
+                                <div id="detailMetadataGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs"></div>
+                            </div>
+                        </div>
+
+                        <!-- Comments Section -->
+                        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
+                            <h3 class="text-base font-extrabold text-white flex items-center justify-between">
+                                <span>Community Discussion</span>
+                                <span id="commentCount" class="text-xs font-normal text-slate-400">(0 comments)</span>
+                            </h3>
+
+                            <div class="flex gap-3 sm:gap-4">
+                                <div id="userCommentAvatar" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-sm text-cyan-400 shrink-0">
+                                    ?
+                                </div>
+                                <div class="flex-1 space-y-3">
+                                    <textarea id="commentInput" rows="2" placeholder="Write a comment or note (Log in or BeatSaver account linked)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 resize-none"></textarea>
+                                    <button onclick="postComment()" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-colors">
+                                        Post Comment
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="commentList" class="space-y-4 pt-4 border-t border-slate-800"></div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Download & Rating Actions -->
+                    <div class="space-y-6">
+                        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-4 shadow-2xl">
+                            <!-- Download File Package -->
+                            <button onclick="triggerAssetDownload()" class="w-full py-3.5 bg-gradient-to-r from-red-600 via-slate-700 to-cyan-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-xl flex items-center justify-center gap-2">
+                                <i data-lucide="download" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                                Download File Package
+                            </button>
+
+                            <!-- BSManager One Click Install Button -->
+                            <button id="bsManagerDetailBtn" onclick="triggerOneClickInstall(event, window.state.activeAsset)" class="w-full py-3 bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="zap" class="w-4 h-4 text-cyan-400"></i>
+                                One-Click Install (BSManager)
+                            </button>
+                            
+                            <div class="border-t border-slate-800 pt-4 space-y-3 text-xs text-slate-400">
+                                <div class="flex justify-between">
+                                    <span>File Size:</span>
+                                    <span id="detailFileSize" class="text-slate-200 font-mono">0 KB</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Format Extension:</span>
+                                    <span id="detailExtension" class="text-cyan-400 font-mono">.ZIP</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rating Card -->
+                        <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-300 uppercase">Rate Asset (Log in required)</h4>
+                            <div class="flex items-center gap-2 text-yellow-400">
+                                <button onclick="rateAsset(1)" class="p-1 hover:scale-125 transition-transform"><i data-lucide="star" class="w-5 h-5"></i></button>
+                                <button onclick="rateAsset(2)" class="p-1 hover:scale-125 transition-transform"><i data-lucide="star" class="w-5 h-5"></i></button>
+                                <button onclick="rateAsset(3)" class="p-1 hover:scale-125 transition-transform"><i data-lucide="star" class="w-5 h-5"></i></button>
+                                <button onclick="rateAsset(4)" class="p-1 hover:scale-125 transition-transform"><i data-lucide="star" class="w-5 h-5"></i></button>
+                                <button onclick="rateAsset(5)" class="p-1 hover:scale-125 transition-transform"><i data-lucide="star" class="w-5 h-5"></i></button>
+                            </div>
+                            <div id="ratingFeedback" class="text-[11px] text-slate-400">Click stars to rate this creation.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- UPLOAD MODAL WITH STRICT FILE EXTENSION RESTRICTIONS -->
+    <div id="uploadModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="glass-panel bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 relative shadow-2xl">
+            <button onclick="closeUploadModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <h2 class="text-xl sm:text-2xl font-black text-white mb-1 flex items-center gap-2">
+                <i data-lucide="upload-cloud" class="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400"></i>
+                Deposit Asset
+            </h2>
+            <p class="text-xs text-slate-400 mb-6">Supported formats: .zip, .bplist, .qmod, .dll, .json, .saber, .avatar, .platform, .png, .jpg</p>
+
+            <!-- Drop Zone Area -->
+            <div id="dropZone" onclick="document.getElementById('fileInput').click()" 
+                 class="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-2xl p-6 sm:p-8 text-center cursor-pointer bg-slate-950/50 hover:bg-slate-900 transition-all mb-6">
+                <input type="file" id="fileInput" accept=".zip,.bplist,.qmod,.dll,.json,.saber,.avatar,.platform,.png,.jpg,.jpeg" class="hidden" onchange="handleFileSelect(event)">
+                <i data-lucide="file-badge-2" class="w-10 h-10 text-cyan-400 mx-auto mb-2"></i>
+                <p id="dropZoneText" class="text-xs sm:text-sm font-semibold text-slate-200">Click or drag asset file here</p>
+                <p class="text-[11px] text-slate-500 mt-1">Strict file format restrictions active</p>
+            </div>
+
+            <!-- Optional Cover Image -->
+            <div class="mb-5">
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Optional Cover Image (PNG, JPG)</label>
+                <input type="file" id="coverInput" accept="image/png, image/jpeg, image/jpg" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-300 focus:outline-none">
+            </div>
+
+            <div id="detectionBox" class="hidden bg-slate-950 border border-cyan-500/30 rounded-2xl p-4 mb-6">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Validated File Format
+                    </span>
+                    <span id="detectedTypeTag" class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[10px] uppercase">Detected</span>
+                </div>
+                <div id="extractedDetails" class="text-xs text-slate-300 space-y-1 font-mono"></div>
+            </div>
+
+            <!-- Upload Form -->
+            <form id="uploadForm" onsubmit="submitAssetUpload(event)" class="space-y-4 sm:space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Title / Display Name</label>
+                    <input type="text" id="upTitle" required placeholder="Asset title" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Category</label>
+                        <div class="relative inline-block text-left w-full">
+                            <button type="button" id="upCategoryTrigger" onclick="toggleCustomDropdown('upCategoryDropdownMenu')" class="w-full flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition-all">
+                                <span id="upCategorySelectedLabel">Map</span>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                            </button>
+                            <input type="hidden" id="upCategory" value="Map">
+
+                            <div id="upCategoryDropdownMenu" class="custom-dropdown-menu hidden-dropdown absolute left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1.5 z-50">
+                                <button type="button" onclick="selectUploadCategory('Map', '🗺️ Map')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg">🗺️ Map</button>
+                                <button type="button" onclick="selectUploadCategory('Playlist', '🎼 Playlist')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg">🎼 Playlist</button>
+                                <button type="button" onclick="selectUploadCategory('Model', '🗡️ Model (Saber/Avatar)')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg">🗡️ Model (Saber/Avatar)</button>
+                                <button type="button" onclick="selectUploadCategory('Configuration', '🎨 Color Scheme / HSV')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg">🎨 Color Scheme / HSV</button>
+                                <button type="button" onclick="selectUploadCategory('Mod', '⚙️ Mod')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-cyan-400 rounded-lg">⚙️ Mod</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Subcategory / Format</label>
+                        <input type="text" id="upSubcategory" placeholder="e.g. Standard Map, HSV Scheme" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <!-- Mod Specific Version Fields (Only when Mod category selected) -->
+                <div id="modUploadFields" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Target Game Version</label>
+                        <input type="text" id="upGameVersion" placeholder="e.g. 1.37.0, 1.29.1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mod Version</label>
+                        <input type="text" id="upModVersion" placeholder="e.g. v1.0.4" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Description</label>
+                    <textarea id="upDescription" rows="3" required placeholder="Provide details, author notes, or instructions..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 focus:outline-none focus:border-cyan-500 resize-none"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeUploadModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+                    <button type="submit" id="btnUploadSubmit" class="px-5 py-2 bg-gradient-to-r from-red-600 to-cyan-600 hover:from-red-500 hover:to-cyan-500 text-white rounded-xl text-xs font-bold shadow-md">
+                        Confirm Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EXPANDED SITE SETTINGS MODAL -->
+    <div id="settingsModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="glass-panel bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 sm:p-8 relative shadow-2xl space-y-6">
+            <button onclick="closeSettingsModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div>
+                <h2 class="text-xl font-black text-white flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-cyan-400"></i>
+                    Preferences & Settings
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">Configure BeatSaver integrations, audio preview volume, and graphics.</p>
+            </div>
+
+            <!-- Rendering Settings -->
+            <div class="space-y-3 border-t border-slate-800/80 pt-4">
+                <label class="block text-xs font-bold text-slate-200">Rendering & Visual Effects Mode</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="applyGraphicsSetting('performance')" id="setPerfBtn" class="p-3 bg-slate-800 border border-cyan-500/50 rounded-xl text-left transition-all">
+                        <div class="font-bold text-xs text-cyan-400">⚡ Performance</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">High FPS & lightweight</div>
+                    </button>
+                    <button onclick="applyGraphicsSetting('quality')" id="setQualBtn" class="p-3 bg-slate-950 border border-slate-800 rounded-xl text-left transition-all">
+                        <div class="font-bold text-xs text-slate-300">✨ Quality</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Glow FX & Glassmorphism</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Audio Preview Settings -->
+            <div class="space-y-3 border-t border-slate-800/80 pt-4">
+                <div class="flex justify-between items-center">
+                    <label class="block text-xs font-bold text-slate-200">Map Audio Preview Volume</label>
+                    <span id="previewVolLabel" class="text-xs font-mono text-cyan-400 font-bold">80%</span>
+                </div>
+                <input type="range" id="previewVolSlider" min="0" max="100" value="80" oninput="updateAudioVolumeSetting(this.value)" class="w-full accent-cyan-400 cursor-pointer">
+            </div>
+
+            <!-- API Integration Toggles -->
+            <div class="space-y-4 border-t border-slate-800/80 pt-4">
+                <label class="block text-xs font-bold text-slate-200">External Repositories & Integrations</label>
+                
+                <!-- BeatSaver Toggle -->
+                <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                            <i data-lucide="globe" class="w-3.5 h-3.5 text-cyan-400"></i> BeatSaver Maps Integration
+                        </div>
+                        <div class="text-[10px] text-slate-400">Include live map catalog directly from BeatSaver API</div>
+                    </div>
+                    <input type="checkbox" id="toggleBeatSaver" onchange="toggleSetting('enableBeatSaver', this.checked)" class="w-4 h-4 accent-cyan-500 cursor-pointer">
+                </div>
+
+                <!-- BeatMods & BSQuest Toggle -->
+                <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                            <i data-lucide="cpu" class="w-3.5 h-3.5 text-cyan-400"></i> Quest Mods Integration
+                        </div>
+                        <div class="text-[10px] text-slate-400">Fetch Quest mods directly from https://mods.bsquest.xyz/</div>
+                    </div>
+                    <input type="checkbox" id="toggleModsApi" onchange="toggleSetting('enableModsApi', this.checked)" class="w-4 h-4 accent-cyan-500 cursor-pointer">
+                </div>
+
+                <!-- BSManager One-Click Install Protocol Toggle -->
+                <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                            <i data-lucide="zap" class="w-3.5 h-3.5 text-cyan-400"></i> BSManager One-Click Protocols
+                        </div>
+                        <div class="text-[10px] text-slate-400">Allow direct one-click installs using beatsaver:// & bsplaylist://</div>
+                    </div>
+                    <input type="checkbox" id="toggleBsManager" onchange="toggleSetting('enableBsManager', this.checked)" class="w-4 h-4 accent-cyan-500 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- BeatSaver Account Linking (OAuth Preparation) -->
+            <div class="space-y-3 border-t border-slate-800/80 pt-4">
+                <label class="block text-xs font-bold text-slate-200">BeatSaver Account Link</label>
+                <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div class="space-y-0.5">
+                        <div id="bsAccountStatus" class="text-xs font-bold text-slate-300">Not Connected</div>
+                        <div class="text-[10px] text-slate-500">Link account to enable future OAuth commenting & liking</div>
+                    </div>
+                    <button id="bsAccountBtn" onclick="linkBeatSaverAccount()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors">
+                        Connect Account
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="saveAndCloseSettings()" class="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-colors">
+                Save & Apply Preferences
+            </button>
+        </div>
+    </div>
+
+    <!-- AUTHENTICATION MODAL -->
+    <div id="authModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="glass-panel bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 sm:p-8 relative shadow-2xl">
+            <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-black text-white">Account Log In</h2>
+                <p class="text-xs text-slate-400 mt-1">Log in to deposit creations, rate assets, and leave comments.</p>
+            </div>
+
+            <button onclick="loginWithGoogle()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 mb-4">
+                <svg class="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                Continue with Google
+            </button>
+
+            <div class="relative flex py-2 items-center mb-4">
+                <div class="flex-grow border-t border-slate-800"></div>
+                <span class="flex-shrink mx-3 text-[10px] text-slate-500 uppercase">Or Email Authentication</span>
+                <div class="flex-grow border-t border-slate-800"></div>
+            </div>
+
+            <form onsubmit="handleEmailAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+                    <input type="email" id="authEmail" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+                    <input type="password" id="authPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" onclick="authAction = 'login'" class="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-colors">
+                        Log In
+                    </button>
+                    <button type="submit" onclick="authAction = 'signup'" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-colors">
+                        Sign Up
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FIREBASE & CORE APPLICATION LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, query, orderBy, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+        // Import config from external file `firebaseconfig.js`
+        let firebaseConfig = null;
+        try {
+            const module = await import('./firebaseconfig.js');
+            firebaseConfig = module.firebaseConfig;
+        } catch (e) {
+            console.warn("External firebaseconfig.js file not detected. Falling back to default environment structure.", e);
+            firebaseConfig = {
+                apiKey: "AIzaSyAl9d4JPEvC2hqcPbGUY6y8ubUuRXBNQH4",
+                authDomain: "beatcella.firebaseapp.com",
+                projectId: "beatcella",
+                storageBucket: "beatcella.firebasestorage.app",
+                messagingSenderId: "961637418357",
+                appId: "1:961637418357:web:cf0a4cf9ff63604746bf3c"
+            };
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // Strict File Upload Extension White-list
+        const ALLOWED_EXTENSIONS = ['.zip', '.bplist', '.qmod', '.dll', '.json', '.saber', '.avatar', '.platform', '.png', '.jpg', '.jpeg'];
+
+        // Global Application State & Settings Storage
+        const savedSettings = JSON.parse(localStorage.getItem('beatcella_settings') || '{}');
+
+        window.state = {
+            currentUser: null,
+            assets: [],
+            activeCategory: 'All',
+            activeSort: 'trending',
+            inspectedFile: null,
+            inspectedMetadata: {},
+            inspectedCoverUrl: null,
+            inspectedAudioUrl: null,
+            detectedCategory: null,
+            activeAsset: null,
+            beatSaverLinkedAccount: localStorage.getItem('beatcella_bs_linked') || null,
+            settings: {
+                enableBeatSaver: savedSettings.enableBeatSaver ?? true,
+                enableModsApi: savedSettings.enableModsApi ?? true,
+                enableBsManager: savedSettings.enableBsManager ?? true,
+                previewVolume: savedSettings.previewVolume ?? 0.8,
+                graphicsMode: savedSettings.graphicsMode ?? 'performance'
+            }
+        };
+
+        // Global Audio Preview Player Management
+        window.audioPlayer = new Audio();
+        window.currentlyPlayingAssetId = null;
+
+        window.audioPlayer.addEventListener('ended', () => {
+            window.currentlyPlayingAssetId = null;
+            updatePlayIcons();
+        });
+
+        // IN-APP INTEGRATED TOAST NOTIFICATION SYSTEM
+        window.showToast = function(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast-enter pointer-events-auto flex items-center justify-between gap-3 p-3.5 rounded-xl border shadow-2xl backdrop-blur-xl text-xs font-medium ${
+                type === 'error' ? 'bg-red-950/90 border-red-500/50 text-red-200' :
+                type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' :
+                'bg-slate-900/95 border-cyan-500/40 text-slate-100'
+            }`;
+
+            const iconName = type === 'error' ? 'alert-triangle' : type === 'success' ? 'check-circle' : 'info';
+
+            toast.innerHTML = `
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="${iconName}" class="w-4 h-4 shrink-0 ${type === 'error' ? 'text-red-400' : type === 'success' ? 'text-emerald-400' : 'text-cyan-400'}"></i>
+                    <span>${message}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white ml-2">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('toast-enter');
+                    toast.classList.add('toast-exit');
+                    setTimeout(() => toast.remove(), 200);
+                }
+            }, 4000);
+        };
+
+        // Auth Observer
+        onAuthStateChanged(auth, (user) => {
+            window.state.currentUser = user;
+            renderAuthUI();
+        });
+
+        function renderAuthUI() {
+            const container = document.getElementById('authContainer');
+            const commentAvatar = document.getElementById('userCommentAvatar');
+
+            if (window.state.currentUser || window.state.beatSaverLinkedAccount) {
+                const name = window.state.currentUser?.displayName || window.state.currentUser?.email?.split('@')[0] || window.state.beatSaverLinkedAccount;
+                const photo = window.state.currentUser?.photoURL;
+
+                container.innerHTML = `
+                    <div class="flex items-center gap-2.5 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5">
+                        ${photo ? `<img src="${photo}" class="w-6 h-6 rounded-full border border-cyan-400">` : 
+                                  `<div class="w-6 h-6 rounded-full bg-cyan-600 text-white font-bold text-[10px] flex items-center justify-center">${name.charAt(0).toUpperCase()}</div>`}
+                        <span class="text-xs font-semibold text-slate-200 hidden sm:inline">${name}</span>
+                        <button onclick="handleSignOut()" title="Sign Out" class="p-1 text-slate-400 hover:text-red-400 transition-colors"><i data-lucide="log-out" class="w-3.5 h-3.5"></i></button>
+                    </div>
+                `;
+
+                if (commentAvatar) {
+                    commentAvatar.innerHTML = photo ? `<img src="${photo}" class="w-full h-full rounded-xl">` : name.charAt(0).toUpperCase();
+                }
+            } else {
+                container.innerHTML = `
+                    <button onclick="openAuthModal()" class="px-3 sm:px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors">
+                        Log In
+                    </button>
+                `;
+                if (commentAvatar) commentAvatar.textContent = '?';
+            }
+            lucide.createIcons();
+        }
+
+        window.loginWithGoogle = async function() {
+            try {
+                await signInWithPopup(auth, googleProvider);
+                closeAuthModal();
+                showToast("Signed in successfully with Google", "success");
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        };
+
+        window.authAction = 'login';
+        window.handleEmailAuth = async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPassword').value;
+            try {
+                if (window.authAction === 'login') {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                    showToast("Logged in successfully", "success");
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, pass);
+                    showToast("Account created successfully", "success");
+                }
+                closeAuthModal();
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        };
+
+        window.handleSignOut = function() {
+            signOut(auth);
+            localStorage.removeItem('beatcella_bs_linked');
+            window.state.beatSaverLinkedAccount = null;
+            showToast("Signed out", "info");
+            renderAuthUI();
+        };
+
+        // Custom Dropdowns Control
+        window.toggleCustomDropdown = function(dropdownId) {
+            const menu = document.getElementById(dropdownId);
+            if (!menu) return;
+            const isHidden = menu.classList.contains('hidden-dropdown');
+            
+            document.querySelectorAll('.custom-dropdown-menu').forEach(d => {
+                d.classList.add('hidden-dropdown');
+                d.classList.remove('visible-dropdown');
+            });
+
+            if (isHidden) {
+                menu.classList.remove('hidden-dropdown');
+                menu.classList.add('visible-dropdown');
+            }
+        };
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#sortDropdownTrigger') && !e.target.closest('#sortDropdownMenu') &&
+                !e.target.closest('#upCategoryTrigger') && !e.target.closest('#upCategoryDropdownMenu')) {
+                document.querySelectorAll('.custom-dropdown-menu').forEach(d => {
+                    d.classList.add('hidden-dropdown');
+                    d.classList.remove('visible-dropdown');
+                });
+            }
+        });
+
+        window.selectCustomSort = function(val, labelText, iconName) {
+            window.state.activeSort = val;
+            document.getElementById('selectedSortLabel').innerHTML = `<i data-lucide="${iconName}" class="w-3.5 h-3.5 text-cyan-400"></i> ${labelText}`;
+            toggleCustomDropdown('sortDropdownMenu');
+            renderAssetGrid();
+            lucide.createIcons();
+        };
+
+        window.selectUploadCategory = function(val, labelText) {
+            document.getElementById('upCategory').value = val;
+            document.getElementById('upCategorySelectedLabel').textContent = labelText;
+            toggleCustomDropdown('upCategoryDropdownMenu');
+            
+            // Toggle version inputs if category is Mod
+            const modFields = document.getElementById('modUploadFields');
+            if (modFields) {
+                if (val === 'Mod') modFields.classList.remove('hidden');
+                else modFields.classList.add('hidden');
+            }
+        };
+
+        // SVG Gradient Cover Generator
+        function generateGradientCover(title, category) {
+            const colors = {
+                Map: ['#ef4444', '#06b6d4'],
+                Playlist: ['#475569', '#06b6d4'],
+                Model: ['#3b82f6', '#ef4444'],
+                Configuration: ['#10b981', '#06b6d4'],
+                Mod: ['#475569', '#3b82f6'],
+                Image: ['#3b82f6', '#14b8a6']
+            };
+            const c = colors[category] || ['#64748b', '#0f172a'];
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+                <defs>
+                    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="${c[0]}" />
+                        <stop offset="100%" stop-color="${c[1]}" />
+                    </linearGradient>
+                </defs>
+                <rect width="400" height="400" fill="url(#g)" />
+                <circle cx="200" cy="200" r="130" fill="rgba(0,0,0,0.25)" />
+                <text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">${category.toUpperCase()}</text>
+                <text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="sans-serif" font-size="16">${title.substring(0, 24)}</text>
+            </svg>`;
+            return 'data:image/svg+xml;base64,' + btoa(svg);
+        }
+
+        // Fetch Vault Assets + External BeatSaver & BSQuest APIs
+        window.fetchVaultAssets = async function() {
+            const loadingState = document.getElementById('loadingState');
+            const assetGrid = document.getElementById('assetGrid');
+            const emptyState = document.getElementById('emptyState');
+
+            loadingState.classList.remove('hidden');
+            assetGrid.classList.add('hidden');
+            emptyState.classList.add('hidden');
+
+            let allAssets = [];
+
+            try {
+                // 1. Fetch Firestore Vault items
+                const querySnapshot = await getDocs(collection(db, "assets"));
+                querySnapshot.forEach((docSnap) => {
+                    allAssets.push({ id: docSnap.id, source: 'Vault', ...docSnap.data() });
+                });
+            } catch (e) {
+                console.error("Firestore fetch error:", e);
+            }
+
+            // 2. BeatSaver Integration API Fetch
+            if (window.state.settings.enableBeatSaver) {
+                try {
+                    const bsRes = await fetch('https://api.beatsaver.com/maps/latest');
+                    if (bsRes.ok) {
+                        const bsData = await bsRes.json();
+                        const bsMaps = (bsData.docs || []).map(m => {
+                            const ver = m.versions?.[0] || {};
+                            return {
+                                id: 'bs_' + m.id,
+                                bsKey: m.id,
+                                bsHash: ver.hash,
+                                title: m.name || m.metadata?.songName || 'BeatSaver Map',
+                                category: 'Map',
+                                subcategory: `Mapper: ${m.metadata?.levelAuthorName || 'Unknown'}`,
+                                authorName: m.uploader?.name || 'BeatSaver',
+                                description: m.description || `BPM: ${m.metadata?.bpm || 'N/A'} | Duration: ${m.metadata?.duration || 0}s`,
+                                coverUrl: ver.coverURL,
+                                fileUrl: ver.downloadURL,
+                                previewUrl: ver.previewURL,
+                                downloads: m.stats?.downloads || 0,
+                                views: m.stats?.plays || 0,
+                                rating: m.stats?.score ? (m.stats.score * 5) : 5.0,
+                                fileSize: 'ZIP Package',
+                                extension: '.ZIP',
+                                source: 'BeatSaver',
+                                metadata: {
+                                    Mapper: m.metadata?.levelAuthorName || 'Unknown',
+                                    BPM: m.metadata?.bpm || 'N/A',
+                                    Key: m.id,
+                                    SongAuthor: m.metadata?.songAuthorName || 'N/A'
+                                },
+                                createdAt: new Date(m.createdAt || Date.now()).getTime()
+                            };
+                        });
+                        allAssets = [...allAssets, ...bsMaps];
+                    }
+                } catch (e) {
+                    console.warn("BeatSaver API fetch notice:", e);
+                }
+            }
+
+            // 3. Quest Mods Integration API Fetch (https://mods.bsquest.xyz/)
+            if (window.state.settings.enableModsApi) {
+                try {
+                    const qmRes = await fetch('https://mods.bsquest.xyz/api/v1/mods');
+                    if (qmRes.ok) {
+                        const qmData = await qmRes.json();
+                        const qmList = Array.isArray(qmData) ? qmData : (qmData.mods || []);
+                        const qmMods = qmList.map(mod => ({
+                            id: 'qm_' + (mod.id || mod.name),
+                            title: mod.name || mod.title || 'Quest Mod',
+                            category: 'Mod',
+                            subcategory: 'Quest Native (.qmod)',
+                            authorName: mod.author || mod.porter || 'BSQuest Modder',
+                            description: mod.description || 'Beat Saber Quest Mod from mods.bsquest.xyz',
+                            gameVersion: mod.gameVersion || mod.version || '1.37.0',
+                            modVersion: mod.version || '1.0.0',
+                            platform: 'Quest',
+                            coverUrl: mod.icon || mod.coverUrl || '',
+                            fileUrl: mod.download || mod.downloadUrl || '',
+                            downloads: mod.downloads || 0,
+                            views: 0,
+                            rating: 5.0,
+                            extension: '.QMOD',
+                            source: 'BSQuest',
+                            metadata: {
+                                Platform: 'Meta Quest Native',
+                                GameVersion: mod.gameVersion || '1.37.0',
+                                ModVersion: mod.version || '1.0.0'
+                            },
+                            createdAt: Date.now()
+                        }));
+                        allAssets = [...allAssets, ...qmMods];
+                    }
+                } catch (e) {
+                    console.warn("BSQuest Mods API notice:", e);
+                }
+            }
+
+            window.state.assets = allAssets;
+            loadingState.classList.add('hidden');
+            renderAssetGrid();
+        };
+
+        // Render Cards Grid with Filtering
+        window.renderAssetGrid = function() {
+            const grid = document.getElementById('assetGrid');
+            const emptyState = document.getElementById('emptyState');
+            grid.innerHTML = '';
+
+            const searchVal = ((document.getElementById('searchInput')?.value || document.getElementById('mobileSearchInput')?.value) || '').toLowerCase();
+            const gameVerFilter = document.getElementById('gameVersionFilter')?.value || 'All';
+            const modPlatFilter = document.getElementById('modPlatformFilter')?.value || 'All';
+
+            let filtered = window.state.assets.filter(item => {
+                // Category Filter
+                if (window.state.activeCategory !== 'All' && item.category !== window.state.activeCategory) return false;
+                
+                // Game Version Filter
+                if (gameVerFilter !== 'All') {
+                    const itemVer = item.gameVersion || item.metadata?.GameVersion || '';
+                    if (itemVer && !itemVer.includes(gameVerFilter)) return false;
+                }
+
+                // Mod Platform Filter
+                if (modPlatFilter !== 'All') {
+                    const ext = (item.extension || '').toLowerCase();
+                    const plat = (item.platform || item.metadata?.Platform || '').toLowerCase();
+                    if (modPlatFilter === 'Quest' && !ext.includes('qmod') && !plat.includes('quest')) return false;
+                    if (modPlatFilter === 'PC' && !ext.includes('dll') && !plat.includes('pc')) return false;
+                }
+
+                // Search Bar Filter
+                if (searchVal) {
+                    return (item.title && item.title.toLowerCase().includes(searchVal)) || 
+                           (item.subcategory && item.subcategory.toLowerCase().includes(searchVal)) ||
+                           (item.authorName && item.authorName.toLowerCase().includes(searchVal)) ||
+                           (item.description && item.description.toLowerCase().includes(searchVal));
+                }
+                return true;
+            });
+
+            // Sorting Logic
+            const sortMode = window.state.activeSort;
+            filtered.sort((a, b) => {
+                if (sortMode === 'newest') return (b.createdAt || 0) - (a.createdAt || 0);
+                if (sortMode === 'downloads') return (b.downloads || 0) - (a.downloads || 0);
+                if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
+                return ((b.downloads || 0) * 2 + (b.views || 0)) - ((a.downloads || 0) * 2 + (a.views || 0));
+            });
+
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            grid.classList.remove('hidden');
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "glass-panel rounded-2xl border border-slate-800 overflow-hidden hover:border-cyan-500/50 transition-all cursor-pointer group flex flex-col shadow-xl";
+                card.onclick = () => openAssetDetail(item);
+
+                const coverSrc = item.coverUrl || generateGradientCover(item.title, item.category);
+                const isPlaying = window.currentlyPlayingAssetId === item.id;
+                const hasPreviewAudio = Boolean(item.previewUrl);
+
+                card.innerHTML = `
+                    <div class="relative h-44 sm:h-48 bg-slate-950 overflow-hidden">
+                        <img src="${coverSrc}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        
+                        <!-- Overlay Category Badge -->
+                        <div class="absolute top-3 left-3 flex gap-1.5 flex-wrap">
+                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-900/90 backdrop-blur text-cyan-400 border border-slate-700">
+                                ${item.category}
+                            </span>
+                            ${item.source && item.source !== 'Vault' ? `<span class="px-2 py-1 rounded-lg text-[9px] font-mono font-semibold bg-cyan-950/90 text-cyan-300 border border-cyan-800/80">${item.source}</span>` : ''}
+                        </div>
+
+                        <!-- One Click BSManager Trigger Button -->
+                        ${item.bsKey || item.category === 'Map' ? `
+                            <button onclick="triggerOneClickInstall(event, '${item.id}')" title="BSManager One-Click Install" class="absolute top-3 right-3 p-2 rounded-xl bg-slate-900/90 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-slate-700 transition-all shadow-md">
+                                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                            </button>
+                        ` : `
+                            <div class="absolute bottom-3 right-3 px-2 py-0.5 rounded text-[10px] font-mono bg-slate-900/90 text-slate-300 border border-slate-800">
+                                ${item.extension || '.ZIP'}
+                            </div>
+                        `}
+
+                        <!-- Play / Pause Audio Preview Button (Shown for Maps) -->
+                        ${hasPreviewAudio ? `
+                            <div onclick="toggleAudioPreview(event, '${item.id}', '${item.previewUrl}')" class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <div class="w-12 h-12 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-2xl hover:scale-110 transition-transform">
+                                    <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="w-6 h-6 fill-slate-950 ${isPlaying ? '' : 'ml-0.5'}"></i>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+                        <div>
+                            <h3 class="font-extrabold text-sm sm:text-base text-slate-100 group-hover:text-cyan-400 transition-colors line-clamp-1">${item.title}</h3>
+                            <p class="text-xs text-slate-400 mt-1">By <span class="text-slate-300 font-medium">${item.authorName || 'Anonymous'}</span></p>
+                        </div>
+                        <div class="flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/80 pt-3">
+                            <span class="flex items-center gap-1.5"><i data-lucide="download" class="w-3.5 h-3.5 text-cyan-400"></i> ${item.downloads || 0}</span>
+                            <span class="flex items-center gap-1.5"><i data-lucide="star" class="w-3.5 h-3.5 text-yellow-400 fill-yellow-400"></i> ${item.rating ? item.rating.toFixed(1) : '5.0'}</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        };
+
+        // File Selection & JSZip Inspection (Extract Song Preview & Cover Art from Song Zip)
+        window.handleFileSelect = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
+            
+            // STRICT FILE RESTRICTION CHECK
+            if (!ALLOWED_EXTENSIONS.includes(ext)) {
+                showToast(`Unsupported file type (${ext}). Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`, 'error');
+                event.target.value = '';
+                return;
+            }
+
+            window.state.inspectedFile = file;
+            window.state.inspectedCoverUrl = null;
+            window.state.inspectedAudioUrl = null;
+
+            const detBox = document.getElementById('detectionBox');
+            const detTag = document.getElementById('detectedTypeTag');
+            const detDetails = document.getElementById('extractedDetails');
+
+            detBox.classList.remove('hidden');
+            detDetails.innerHTML = `Validating & extracting package contents from ${file.name}...`;
+
+            let detectedCat = 'Map';
+            let metadata = { Format: ext.toUpperCase(), Size: (file.size / 1024).toFixed(1) + ' KB' };
+
+            if (ext === '.zip') {
+                try {
+                    const zip = await JSZip.loadAsync(file);
+                    const infoFile = zip.file("Info.dat") || zip.file("info.dat");
+                    if (infoFile) {
+                        detectedCat = 'Map';
+                        const infoText = await infoFile.async("text");
+                        const infoJson = JSON.parse(infoText);
+
+                        metadata = {
+                            SongName: infoJson._songName || 'Unknown Title',
+                            BPM: infoJson._beatsPerMinute || 'Unspecified',
+                            Mapper: infoJson._levelAuthorName || 'Community Mapper',
+                            SongSubName: infoJson._songSubName || ''
+                        };
+
+                        document.getElementById('upTitle').value = infoJson._songName || file.name;
+
+                        // Extract Mapper Set Cover Art Image
+                        const coverImgFilename = infoJson._coverImageFilename || "cover.png";
+                        const coverZipFile = zip.file(coverImgFilename) || zip.file(coverImgFilename.toLowerCase());
+                        if (coverZipFile) {
+                            const blob = await coverZipFile.async("blob");
+                            window.state.inspectedCoverUrl = URL.createObjectURL(blob);
+                        }
+
+                        // Extract Mapper Set Preview Audio Song
+                        const songFilename = infoJson._songFilename || "song.ogg";
+                        const songZipFile = zip.file(songFilename) || zip.file(songFilename.toLowerCase());
+                        if (songZipFile) {
+                            const audioBlob = await songZipFile.async("blob");
+                            window.state.inspectedAudioUrl = URL.createObjectURL(audioBlob);
+                        }
+                    }
+                } catch(e){
+                    console.warn("ZIP inspection fallback:", e);
+                }
+            } else if (ext === '.json' || ext === '.bplist') {
+                try {
+                    const text = await file.text();
+                    const json = JSON.parse(text);
+                    if (json.songs) {
+                        detectedCat = 'Playlist';
+                        metadata = { SongCount: json.songs.length };
+                    } else {
+                        detectedCat = 'Configuration';
+                        metadata = { ConfigType: 'Color Scheme / HSV JSON' };
+                    }
+                } catch(e){}
+            } else if (ext === '.qmod' || ext === '.dll') {
+                detectedCat = 'Mod';
+                metadata = { Platform: ext === '.qmod' ? 'Quest Native' : 'PC VR' };
+            } else if (['.saber', '.avatar', '.platform'].includes(ext)) {
+                detectedCat = 'Model';
+                metadata = { Format: ext.toUpperCase() };
+            }
+
+            window.state.detectedCategory = detectedCat;
+            window.state.inspectedMetadata = metadata;
+            selectUploadCategory(detectedCat, detectedCat);
+            document.getElementById('dropZoneText').textContent = `Selected: ${file.name}`;
+            detTag.textContent = `Type: ${detectedCat}`;
+
+            let detailHtml = `<div>Filename: <strong>${file.name}</strong> (${(file.size / (1024*1024)).toFixed(2)} MB)</div>`;
+            for (let [k, v] of Object.entries(metadata)) {
+                detailHtml += `<div>${k}: <span class="text-cyan-400">${v}</span></div>`;
+            }
+            detDetails.innerHTML = detailHtml;
+            showToast("File verified & preview extracted successfully!", "success");
+        };
+
+        // Submit Asset Deposit
+        window.submitAssetUpload = async function(e) {
+            e.preventDefault();
+            
+            if (!window.state.currentUser && !window.state.beatSaverLinkedAccount) {
+                showToast("You must be logged in to deposit assets.", "error");
+                openAuthModal();
+                return;
+            }
+
+            const btn = document.getElementById('btnUploadSubmit');
+            btn.disabled = true;
+            btn.textContent = "Uploading...";
+
+            const file = window.state.inspectedFile;
+            const coverInput = document.getElementById('coverInput');
+            const coverFile = coverInput?.files[0];
+
+            let fileUrl = '';
+            let coverUrl = window.state.inspectedCoverUrl || '';
+
+            try {
+                if (file) {
+                    const fileRef = ref(storage, `vault_assets/${Date.now()}_${file.name}`);
+                    const uploadRes = await uploadBytes(fileRef, file);
+                    fileUrl = await getDownloadURL(uploadRes.ref);
+                }
+
+                if (coverFile) {
+                    const coverRef = ref(storage, `covers/${Date.now()}_${coverFile.name}`);
+                    const coverRes = await uploadBytes(coverRef, coverFile);
+                    coverUrl = await getDownloadURL(coverRes.ref);
+                }
+
+                const cat = document.getElementById('upCategory').value;
+                const title = document.getElementById('upTitle').value;
+                const gVer = document.getElementById('upGameVersion')?.value || '';
+                const mVer = document.getElementById('upModVersion')?.value || '';
+
+                const newAsset = {
+                    title: title,
+                    category: cat,
+                    subcategory: document.getElementById('upSubcategory').value || 'Community Creation',
+                    description: document.getElementById('upDescription').value,
+                    authorName: window.state.currentUser?.displayName || window.state.beatSaverLinkedAccount || window.state.currentUser?.email?.split('@')[0] || 'Anonymous Mapper',
+                    authorId: window.state.currentUser?.uid || 'bs_user',
+                    coverUrl: coverUrl || generateGradientCover(title, cat),
+                    fileUrl: fileUrl,
+                    previewUrl: window.state.inspectedAudioUrl || '',
+                    downloads: 0,
+                    views: 1,
+                    rating: 5.0,
+                    ratingCount: 1,
+                    ratingSum: 5,
+                    gameVersion: gVer,
+                    modVersion: mVer,
+                    fileSize: file ? (file.size > 1048576 ? (file.size / 1048576).toFixed(1) + ' MB' : (file.size / 1024).toFixed(0) + ' KB') : 'N/A',
+                    extension: file ? '.' + file.name.split('.').pop().toUpperCase() : '.ZIP',
+                    metadata: window.state.inspectedMetadata || {},
+                    createdAt: Date.now()
+                };
+
+                await addDoc(collection(db, "assets"), newAsset);
+                closeUploadModal();
+                showToast("Asset uploaded successfully!", "success");
+                fetchVaultAssets();
+            } catch (err) {
+                showToast(err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Confirm Upload";
+            }
+        };
+
+        // Open Detail View & Audio Player
+        window.openAssetDetail = async function(asset) {
+            window.state.activeAsset = asset;
+            document.getElementById('detailTitle').textContent = asset.title;
+            document.getElementById('detailAuthor').innerHTML = `By <span class="text-cyan-400 font-semibold">${asset.authorName || 'Anonymous'}</span>`;
+            document.getElementById('detailCategoryBadge').textContent = asset.category;
+            document.getElementById('detailSubcategory').textContent = asset.subcategory || 'Standard Format';
+            
+            const srcBadge = document.getElementById('detailSourceBadge');
+            if (asset.source && asset.source !== 'Vault') {
+                srcBadge.textContent = asset.source;
+                srcBadge.classList.remove('hidden');
+            } else {
+                srcBadge.classList.add('hidden');
+            }
+
+            const coverImg = document.getElementById('detailCover');
+            coverImg.src = asset.coverUrl || generateGradientCover(asset.title, asset.category);
+
+            // Audio Play Overlay
+            const playOverlay = document.getElementById('detailPlayOverlay');
+            if (asset.previewUrl) {
+                playOverlay.classList.remove('hidden');
+            } else {
+                playOverlay.classList.add('hidden');
+            }
+
+            document.getElementById('detailDownloads').textContent = asset.downloads || 0;
+            document.getElementById('detailRating').textContent = asset.rating ? asset.rating.toFixed(1) : '5.0';
+            document.getElementById('detailViews').textContent = (asset.views || 0) + 1;
+            document.getElementById('detailDescription').textContent = asset.description;
+            document.getElementById('detailFileSize').textContent = asset.fileSize || 'N/A';
+            document.getElementById('detailExtension').textContent = asset.extension || '.ZIP';
+
+            // Show Integrated HSV Preview section if asset is a Configuration / HSV asset
+            const hsvSection = document.getElementById('integratedHsvSection');
+            if (asset.category === 'Configuration' || (asset.extension && asset.extension.toLowerCase().includes('json'))) {
+                hsvSection.classList.remove('hidden');
+                setTimeout(() => updateHSVStudio(), 50);
+            } else {
+                hsvSection.classList.add('hidden');
+            }
+
+            const specGrid = document.getElementById('detailMetadataGrid');
+            specGrid.innerHTML = '';
+            const specs = asset.metadata || { Category: asset.category };
+            for (let [k, v] of Object.entries(specs)) {
+                specGrid.innerHTML += `
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase font-bold">${k}</div>
+                        <div class="font-extrabold text-slate-200 mt-0.5">${v}</div>
+                    </div>
+                `;
+            }
+
+            navigateTo('detail');
+
+            if (asset.id && !asset.id.startsWith('bs_') && !asset.id.startsWith('qm_')) {
+                try {
+                    await updateDoc(doc(db, "assets", asset.id), { views: increment(1) });
+                } catch(e){}
+                fetchComments(asset.id);
+            } else {
+                document.getElementById('commentList').innerHTML = '<div class="text-xs text-slate-500 py-2">External repository comments integrated via linked account.</div>';
+            }
+            updatePlayIcons();
+        };
+
+        // Audio Preview Player Controls
+        window.toggleAudioPreview = function(e, assetId, previewUrl) {
+            if (e) e.stopPropagation();
+            if (!previewUrl) return;
+
+            if (window.currentlyPlayingAssetId === assetId) {
+                window.audioPlayer.pause();
+                window.currentlyPlayingAssetId = null;
+            } else {
+                window.audioPlayer.pause();
+                window.audioPlayer.src = previewUrl;
+                window.audioPlayer.volume = window.state.settings.previewVolume;
+                window.audioPlayer.play().catch(() => showToast("Audio playback restricted by browser", "error"));
+                window.currentlyPlayingAssetId = assetId;
+            }
+            updatePlayIcons();
+        };
+
+        window.toggleDetailAudioPlayback = function() {
+            const asset = window.state.activeAsset;
+            if (asset && asset.previewUrl) {
+                toggleAudioPreview(null, asset.id, asset.previewUrl);
+            }
+        };
+
+        function updatePlayIcons() {
+            const activeId = window.currentlyPlayingAssetId;
+            const detailAsset = window.state.activeAsset;
+            const detailIcon = document.getElementById('detailPlayIcon');
+
+            if (detailIcon && detailAsset) {
+                if (activeId === detailAsset.id) {
+                    detailIcon.setAttribute('data-lucide', 'pause');
+                } else {
+                    detailIcon.setAttribute('data-lucide', 'play');
+                }
+            }
+            lucide.createIcons();
+        }
+
+        // One-Click Install Launcher (BSManager Protocol)
+        window.triggerOneClickInstall = function(e, assetOrId) {
+            if (e) e.stopPropagation();
+            if (!window.state.settings.enableBsManager) {
+                showToast("BSManager One-Click protocol is disabled in Settings.", "info");
+                return;
+            }
+
+            const asset = typeof assetOrId === 'string' ? window.state.assets.find(a => a.id === assetOrId) : assetOrId;
+            if (!asset) return;
+
+            let protocolUrl = '';
+            if (asset.category === 'Map') {
+                const identifier = asset.bsKey || asset.bsHash || asset.id;
+                protocolUrl = `beatsaver://${identifier}`;
+            } else if (asset.category === 'Playlist') {
+                protocolUrl = `bsplaylist://${asset.fileUrl}`;
+            } else {
+                protocolUrl = `bsmana://${asset.fileUrl}`;
+            }
+
+            showToast(`Launching BSManager One-Click (${protocolUrl})...`, "success");
+            window.location.href = protocolUrl;
+        };
+
+        window.triggerAssetDownload = async function() {
+            const asset = window.state.activeAsset;
+            if (!asset) return;
+
+            if (asset.fileUrl) {
+                window.open(asset.fileUrl, '_blank');
+                showToast("Downloading asset package...", "info");
+            } else {
+                showToast("File package download link unavailable.", "error");
+            }
+
+            if (asset.id && !asset.id.startsWith('bs_')) {
+                try {
+                    await updateDoc(doc(db, "assets", asset.id), { downloads: increment(1) });
+                    asset.downloads = (asset.downloads || 0) + 1;
+                    document.getElementById('detailDownloads').textContent = asset.downloads;
+                } catch(e){}
+            }
+        };
+
+        // Comments System
+        window.fetchComments = async function(assetId) {
+            const list = document.getElementById('commentList');
+            const countTag = document.getElementById('commentCount');
+            list.innerHTML = '<div class="text-xs text-slate-500 py-2">Loading discussion...</div>';
+
+            try {
+                const q = query(collection(db, `assets/${assetId}/comments`), orderBy("createdAt", "desc"));
+                const snap = await getDocs(q);
+                list.innerHTML = '';
+                countTag.textContent = `(${snap.size} comments)`;
+
+                if (snap.empty) {
+                    list.innerHTML = '<div class="text-xs text-slate-500 py-2">No comments yet. Start the conversation!</div>';
+                    return;
+                }
+
+                snap.forEach(d => {
+                    const c = d.data();
+                    const dateStr = c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Just now';
+                    list.innerHTML += `
+                        <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-bold text-cyan-400">${c.userName || 'Anonymous'}</span>
+                                <span class="text-[10px] text-slate-500 font-mono">${dateStr}</span>
+                            </div>
+                            <p class="text-xs text-slate-200 leading-relaxed">${c.text}</p>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                list.innerHTML = '<div class="text-xs text-slate-500 py-2">Comments available above.</div>';
+            }
+        };
+
+        window.postComment = async function() {
+            if (!window.state.currentUser && !window.state.beatSaverLinkedAccount) {
+                showToast("You must log in or link a BeatSaver account to post comments.", "error");
+                openAuthModal();
+                return;
+            }
+
+            const input = document.getElementById('commentInput');
+            const text = input.value.trim();
+            const asset = window.state.activeAsset;
+
+            if (!text || !asset || !asset.id) return;
+
+            const userName = window.state.currentUser?.displayName || window.state.beatSaverLinkedAccount || window.state.currentUser?.email?.split('@')[0];
+
+            try {
+                await addDoc(collection(db, `assets/${asset.id}/comments`), {
+                    userName: userName,
+                    text: text,
+                    createdAt: Date.now()
+                });
+                input.value = '';
+                showToast("Comment posted", "success");
+                fetchComments(asset.id);
+            } catch (e) {
+                showToast(e.message, "error");
+            }
+        };
+
+        // Rating System
+        window.rateAsset = async function(stars) {
+            if (!window.state.currentUser) {
+                showToast("You must be logged in to rate assets.", "error");
+                openAuthModal();
+                return;
+            }
+
+            const asset = window.state.activeAsset;
+            if (!asset || !asset.id || asset.id.startsWith('bs_')) return;
+
+            const newSum = (asset.ratingSum || 5) + stars;
+            const newCount = (asset.ratingCount || 1) + 1;
+            const newRating = newSum / newCount;
+
+            try {
+                await updateDoc(doc(db, "assets", asset.id), {
+                    ratingSum: newSum,
+                    ratingCount: newCount,
+                    rating: newRating
+                });
+                document.getElementById('detailRating').textContent = newRating.toFixed(1);
+                document.getElementById('ratingFeedback').textContent = `Rated ${stars} stars. Thank you!`;
+                showToast(`Rating submitted (${stars} stars)`, "success");
+            } catch (e) {
+                showToast(e.message, "error");
+            }
+        };
+
+        // Router (Fixed Bug: Hides category filter bar & trending dropdown on About and Asset Detail pages)
+        window.navigateTo = function(viewName) {
+            const catFilterBar = document.getElementById('categoryFilterBar');
+            
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('aboutView').classList.add('hidden');
+            document.getElementById('assetDetailView').classList.add('hidden');
+
+            if (viewName === 'home') {
+                catFilterBar.classList.remove('hidden');
+                document.getElementById('homeView').classList.remove('hidden');
+            } else if (viewName === 'about') {
+                catFilterBar.classList.add('hidden');
+                document.getElementById('aboutView').classList.remove('hidden');
+            } else if (viewName === 'detail') {
+                catFilterBar.classList.add('hidden');
+                document.getElementById('assetDetailView').classList.remove('hidden');
+            }
+
+            // Close any open dropdown menus
+            document.querySelectorAll('.custom-dropdown-menu').forEach(d => d.classList.add('hidden-dropdown'));
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.filterCategory = function(cat) {
+            window.state.activeCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.className = "cat-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200 transition-all whitespace-nowrap";
+            });
+            event.currentTarget.className = "cat-btn active px-3.5 py-2 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 transition-all whitespace-nowrap";
+            
+            // Show / Hide Mod Version Filter container
+            const modContainer = document.getElementById('modFiltersContainer');
+            if (cat === 'Mod' || cat === 'All') {
+                modContainer.classList.remove('hidden');
+            } else {
+                modContainer.classList.add('hidden');
+            }
+
+            renderAssetGrid();
+        };
+
+        window.resetModFilters = function() {
+            document.getElementById('gameVersionFilter').value = 'All';
+            document.getElementById('modPlatformFilter').value = 'All';
+            renderAssetGrid();
+        };
+
+        window.handleSearch = function(isMobile = false) {
+            if (isMobile) {
+                const val = document.getElementById('mobileSearchInput').value;
+                document.getElementById('searchInput').value = val;
+            }
+            renderAssetGrid();
+        };
+
+        // Settings Modal Controls & Settings State Persistence
+        window.openSettingsModal = function() {
+            document.getElementById('toggleBeatSaver').checked = window.state.settings.enableBeatSaver;
+            document.getElementById('toggleModsApi').checked = window.state.settings.enableModsApi;
+            document.getElementById('toggleBsManager').checked = window.state.settings.enableBsManager;
+            document.getElementById('previewVolSlider').value = window.state.settings.previewVolume * 100;
+            document.getElementById('previewVolLabel').textContent = Math.round(window.state.settings.previewVolume * 100) + '%';
+            
+            const bsStatus = document.getElementById('bsAccountStatus');
+            const bsBtn = document.getElementById('bsAccountBtn');
+            if (window.state.beatSaverLinkedAccount) {
+                bsStatus.textContent = `Linked: ${window.state.beatSaverLinkedAccount}`;
+                bsStatus.className = "text-xs font-bold text-cyan-400";
+                bsBtn.textContent = "Unlink";
+            } else {
+                bsStatus.textContent = "Not Connected";
+                bsStatus.className = "text-xs font-bold text-slate-300";
+                bsBtn.textContent = "Connect Account";
+            }
+
+            document.getElementById('settingsModal').classList.remove('hidden');
+        };
+
+        window.closeSettingsModal = () => document.getElementById('settingsModal').classList.add('hidden');
+
+        window.toggleSetting = function(key, val) {
+            window.state.settings[key] = val;
+        };
+
+        window.updateAudioVolumeSetting = function(val) {
+            const num = val / 100;
+            window.state.settings.previewVolume = num;
+            window.audioPlayer.volume = num;
+            document.getElementById('previewVolLabel').textContent = `${val}%`;
+        };
+
+        window.linkBeatSaverAccount = function() {
+            if (window.state.beatSaverLinkedAccount) {
+                localStorage.removeItem('beatcella_bs_linked');
+                window.state.beatSaverLinkedAccount = null;
+                showToast("Unlinked BeatSaver Account", "info");
+            } else {
+                const handle = prompt("Enter your BeatSaver username / ID to link:");
+                if (handle && handle.trim()) {
+                    window.state.beatSaverLinkedAccount = handle.trim();
+                    localStorage.setItem('beatcella_bs_linked', handle.trim());
+                    showToast(`Connected BeatSaver account (${handle.trim()})`, "success");
+                }
+            }
+            renderAuthUI();
+            openSettingsModal();
+        };
+
+        window.saveAndCloseSettings = function() {
+            localStorage.setItem('beatcella_settings', JSON.stringify(window.state.settings));
+            closeSettingsModal();
+            showToast("Preferences saved!", "success");
+            fetchVaultAssets();
+        };
+
+        window.applyGraphicsSetting = function(mode) {
+            const body = document.body;
+            const btnP = document.getElementById('setPerfBtn');
+            const btnQ = document.getElementById('setQualBtn');
+            window.state.settings.graphicsMode = mode;
+
+            if (mode === 'quality') {
+                body.className = "quality-mode text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-white";
+                btnQ.className = "p-3 bg-slate-800 border border-cyan-500/50 rounded-xl text-left transition-all";
+                btnP.className = "p-3 bg-slate-950 border border-slate-800 rounded-xl text-left transition-all";
+            } else {
+                body.className = "performance-mode text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-white";
+                btnP.className = "p-3 bg-slate-800 border border-cyan-500/50 rounded-xl text-left transition-all";
+                btnQ.className = "p-3 bg-slate-950 border border-slate-800 rounded-xl text-left transition-all";
+            }
+        };
+
+        // Integrated Canvas Note Rendering for HSV Section inside Asset Detail page
+        window.updateHSVStudio = function() {
+            const canvas = document.getElementById('hsvCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            const leftHue = document.getElementById('sliderLeftHue').value;
+            const rightHue = document.getElementById('sliderRightHue').value;
+
+            const leftColor = `hsl(${leftHue}, 90%, 55%)`;
+            const rightColor = `hsl(${rightHue}, 90%, 55%)`;
+
+            document.getElementById('valLeftHex').textContent = `HSL(${leftHue}, 90%, 55%)`;
+            document.getElementById('valRightHex').textContent = `HSL(${rightHue}, 90%, 55%)`;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Left Note
+            ctx.fillStyle = leftColor;
+            ctx.shadowColor = leftColor;
+            ctx.shadowBlur = 18;
+            ctx.beginPath();
+            ctx.roundRect(100, 50, 90, 90, 14);
+            ctx.fill();
+
+            // Left Arrow
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.moveTo(145, 75);
+            ctx.lineTo(120, 115);
+            ctx.lineTo(170, 115);
+            ctx.fill();
+
+            // Right Note
+            ctx.fillStyle = rightColor;
+            ctx.shadowColor = rightColor;
+            ctx.shadowBlur = 18;
+            ctx.beginPath();
+            ctx.roundRect(310, 50, 90, 90, 14);
+            ctx.fill();
+
+            // Right Arrow
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.moveTo(355, 75);
+            ctx.lineTo(330, 115);
+            ctx.lineTo(380, 115);
+            ctx.fill();
+        };
+
+        // Modals
+        window.openUploadModal = () => {
+            if (!window.state.currentUser && !window.state.beatSaverLinkedAccount) {
+                showToast("You must be logged in to deposit assets.", "error");
+                openAuthModal();
+                return;
+            }
+            document.getElementById('uploadModal').classList.remove('hidden');
+        };
+        window.closeUploadModal = () => document.getElementById('uploadModal').classList.add('hidden');
+        window.openAuthModal = () => document.getElementById('authModal').classList.remove('hidden');
+        window.closeAuthModal = () => document.getElementById('authModal').classList.add('hidden');
+
+        // Initial Boot
+        fetchVaultAssets();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
